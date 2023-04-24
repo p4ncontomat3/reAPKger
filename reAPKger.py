@@ -3,6 +3,7 @@ import subprocess
 import os
 import sys
 
+
 def check_dependencies():
     dependencies = ['apktool', 'jarsigner', 'apksigner', 'zipalign']
     for dep in dependencies:
@@ -23,7 +24,8 @@ def check_signature_scheme(APK):
             else: 
                 return 'v2'
     except:
-        print("[-] No se pudo obtener el sign scheme uwu")
+        print("[-] No sign scheme detected uwu")
+        sys.exit(1)
 
 
 def generate_keystore():
@@ -37,7 +39,7 @@ def generate_keystore():
 def sign_v2(APPDIR, APPOUT):
     try:
         TMP_APPOUT = 'tmp-' + sys.argv[2]
-        BASEPATH = os.path.abspath(os.path.dirname(__file__))
+        BASEPATH = os.path.abspath(os.getcwd())
         if os.path.isfile(APPOUT):
             os.remove(APPOUT)
         print("[+] Building apk to temp file")
@@ -49,13 +51,14 @@ def sign_v2(APPDIR, APPOUT):
         os.system(f"zipalign -p 4 {TMP_APPOUT} {APPOUT}")
         print("[+] All seems to be right")
         os.remove(TMP_APPOUT)
+        os.remove(f"{BASEPATH}/custom.keystore")
     except:
         print("[-] Something goes wrong")
 
 def sign_v3(APPDIR, APPOUT):
     try:
         TMP_APPOUT = 'tmp-' + sys.argv[2]
-        BASEPATH = os.path.abspath(os.path.dirname(__file__))
+        BASEPATH = os.path.abspath(os.getcwd())
         if os.path.isfile(APPOUT):
             os.remove(APPOUT)
         print("[+] Building apk to temp file")
@@ -66,29 +69,51 @@ def sign_v3(APPDIR, APPOUT):
         os.system(f"apksigner sign --ks {BASEPATH}/custom.keystore --ks-pass pass:123123 --ks-key-alias mykeyaliasname --v2-signing-enabled true {APPOUT} > /dev/null 2>&1")
         os.system(f"apksigner verify {APPOUT} > /dev/null 2>&1")
         os.remove(TMP_APPOUT)
+        os.remove(f"{BASEPATH}/custom.keystore")
     except:
         print("[-] Something goes wrong")
 
 def main():
     if len(sys.argv) < 3:
-        print('Usage {} <decompiled apk folder> <output.apk>'.format(sys.argv[0]))
-        exit
+        print('Usage {} <decompiled apk folder> <output.apk> <optional: scheme_ver>'.format(sys.argv[0]))
+        print('v2: force signing with scheme version 2')
+        print('v3: force signing with scheme version 3')
+        sys.exit(1)
     else:
-        try:
-            APPDIR = sys.argv[1]
-            APPOUT = sys.argv[2]
-            APK = APPDIR + '.apk'
-            check_dependencies()
-            sig_scheme = check_signature_scheme(APK)
-            print("[*] Signature scheme detected: {}".format(sig_scheme))
-            
-            if sig_scheme == 'v2':
-                generate_keystore()
-                sign_v2(APPDIR, APPOUT)
-            else:
-                sign_v3(APPDIR, APPOUT)
-        except KeyboardInterrupt:
-            print('\n[</3] uwu')
+        if len(sys.argv) == 3:
+            try:
+                APPDIR = sys.argv[1]
+                APPOUT = sys.argv[2]
+                APK = APPDIR + '.apk'
+                check_dependencies()
+                sig_scheme = check_signature_scheme(APK)
+                print("[*] Signature scheme detected: {}".format(sig_scheme))
+                
+                if sig_scheme == 'v2':
+                    generate_keystore()
+                    sign_v2(APPDIR, APPOUT)
+                else:
+                    sign_v3(APPDIR, APPOUT)
+            except KeyboardInterrupt:
+                print('\n[</3] uwu')
+
+        elif len(sys.argv) == 4:
+            try:
+                APPDIR = sys.argv[1]
+                APPOUT = sys.argv[2]
+                APK = APPDIR + '.apk'
+                check_dependencies()
+                sig_scheme = sys.argv[3]
+                print("[*] Signature scheme detected: {}".format(sig_scheme))
+                
+                if sig_scheme == 'v2':
+                    generate_keystore()
+                    sign_v2(APPDIR, APPOUT)
+                else:
+                    sign_v3(APPDIR, APPOUT)
+            except KeyboardInterrupt:
+                print('\n[</3] uwu')
+
 
 if __name__ == '__main__':
     main()
